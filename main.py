@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Response, status, HTTPException
 from fastapi.params import Body
 from pydantic import BaseModel
 from random import randrange
@@ -31,7 +31,7 @@ def get_posts():
 
 
 # title string, content string
-@app.post('/posts')
+@app.post('/posts', status_code=status.HTTP_201_CREATED)
 def create_post(newPost: Post):
     print(newPost)
     print(newPost.dict())
@@ -54,6 +54,32 @@ def get_post(id: int, response: Response):
     print(id)
     found_post = find_post(id)
     if not found_post:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return {"data": f"No post of {id} is found"}
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id {id} not found")
+        # response.status_code = status.HTTP_404_NOT_FOUND
+        # return {"data": f"No post of {id} is found"}
     return {"data": found_post}
+
+
+def find_post_bt_index(id):
+    for i, p in enumerate(my_posts):
+        if p['id'] == id:
+            return i
+
+
+@app.delete('/posts/{id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(id: int):
+    posts = find_post_bt_index(id)
+    if posts is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'post of id {id} is not found')
+    my_posts.pop(posts)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.put('/posts/{id}')
+def update_post(id: int, post: Post):
+    posts = find_post_bt_index(id)
+    if posts is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'post of id {id} is not found')
+    posts_dic = post.dict()
+    posts_dic['id'] = id
+    my_posts[posts] = posts_dic
+    return {"data": posts_dic}
